@@ -508,7 +508,7 @@ void fatx_fuse_print_usage(void)
     /* Print basic usage */
     fprintf(stderr, "FATXFS - Userspace FATX Filesystem Driver\n\n");
     fprintf(stderr, "Usage: %s <device> <mountpoint> [<options>]\n", prog_short_name);
-    fprintf(stderr, "   or: %s <device> <mountpoint> --drive=c|e|x|y|z [<options>]\n", prog_short_name);
+    fprintf(stderr, "   or: %s <device> <mountpoint> --drive=c|e|x|y|z|f|g [<options>]\n", prog_short_name);
     fprintf(stderr, "   or: %s <device> <mountpoint> --offset=<offset> --size=<size> [<options>]\n\n", prog_short_name);
     fprintf(stderr, "General Options:\n"
                     "    -o opt, [opt...]       mount options\n"
@@ -527,6 +527,25 @@ void fatx_fuse_print_usage(void)
     fuse_main(2, argv, &fatx_fuse_oper, NULL);
 }
 
+int get_partition_details(const char * dev_path,size_t * poffset, size_t * psize,int p_index)
+{
+    XboxPartitionTable pt;
+    void * pt_ptr = &pt;
+    FILE * device;
+    u_int32_t start,size;
+ 
+    device = fopen(dev_path, "rb");
+    fseek(device, 0x0, SEEK_SET);
+    fread(pt_ptr, sizeof(XboxPartitionTable), 1, device);
+    fclose(device);
+    start=pt.TableEntries[p_index].LBAStart;
+    size=pt.TableEntries[p_index].LBASize;
+    *poffset=(start& 0xFFFFFFFF);
+    *psize=(size & 0xFFFFFFFFF);
+    *poffset=(size_t)((*poffset)*512);
+    *psize=(size_t)((*psize)*512);
+    return 0;   
+}
 /*
  * Program entry point.
  */
@@ -535,7 +554,7 @@ int main(int argc, char *argv[])
     struct fuse_args args = FUSE_ARGS_INIT(argc, argv);
     struct fatx_fuse_private_data pd;
     int status;
-
+    
     prog_short_name = basename(argv[0]);
 
     /* Define command line options. */
@@ -600,8 +619,15 @@ int main(int argc, char *argv[])
         {
             pd.mount_partition_drive = 'c';
         }
-
-        status = fatx_fuse_drive_to_offset_size(pd.mount_partition_drive,
+        else if (pd.mount_partition_drive == 'f')
+	{
+		status=get_partition_details(pd.device_path,&(pd.mount_partition_offset), &(pd.mount_partition_size),5);
+        }
+	else if (pd.mount_partition_drive == 'g')
+	{
+		status=get_partition_details(pd.device_path,&(pd.mount_partition_offset), &(pd.mount_partition_size),6);
+	}
+        else status = fatx_fuse_drive_to_offset_size(pd.mount_partition_drive,
                                                 &pd.mount_partition_offset,
                                                 &pd.mount_partition_size);
         if (status)

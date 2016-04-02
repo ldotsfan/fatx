@@ -42,6 +42,24 @@
 #define FATX_STATUS_FILE_DELETED     1
 #define FATX_STATUS_END_OF_DIR       2
 
+#pragma pack(1)
+typedef struct
+{
+        uint8_t Name[16];
+        uint32_t Flags;
+        uint32_t LBAStart;
+        uint32_t LBASize;
+        uint32_t Reserved;
+} XboxPartitionTableEntry;
+
+typedef struct
+{
+        uint8_t   Magic[16];
+        uint8_t    Res0[32];
+        XboxPartitionTableEntry TableEntries[14];
+} XboxPartitionTable;
+#pragma pack()
+
 struct fatx_fs {
     char const *device_path;
     FILE       *device;
